@@ -160,11 +160,21 @@
         -> (and (check result 'nc_inq)
                 (values ndims nvars natts unlimdim))))
 
-(define-netcdf nc_inq_nvars
+(define-netcdf nc_inq_natts
   (_fun (ncid : _int)
-        (nvars : (_ptr o _int))
+        (natts : (_ptr o _int))
         -> (result : _int)
-        -> (and (check result 'nc_inq_nvars) nvars)))
+        -> (and (check result 'nc_inq_natts) natts)))
+
+(define-netcdf nc_inq_att
+  (_fun (ncid : _int)
+        (varid : _int)
+        (name : _string)
+        (dtype : (_ptr o _data-type))
+        (len : (_ptr o _size))
+        -> (result : _int)
+        -> (and (check result 'nc_inq_att)
+                (values dtype len))))
 
 (define-netcdf nc_inq_attlen
   (_fun (ncid : _int)
@@ -173,6 +183,15 @@
         (len : (_ptr o _size))
         -> (result : _int)
         -> (and (check result 'nc_inq_attlen) len)))
+
+(define-netcdf nc_inq_attname
+  (_fun (ncid : _int)
+        (varid : _int)
+        (attnum : _int)
+        (attname : (_bytes o NC_MAX_NAME))
+        -> (result : _int)
+        -> (and (check result 'nc_inq_attname)
+                (cast attname _bytes _string))))
 
 (define-netcdf nc_inq_ndims
   (_fun (ncid : _int)
@@ -196,6 +215,12 @@
         -> (result : _int)
         -> (and (check result 'nc_inq_dimid) dimid)))
 
+(define-netcdf nc_inq_nvars
+  (_fun (ncid : _int)
+        (nvars : (_ptr o _int))
+        -> (result : _int)
+        -> (and (check result 'nc_inq_nvars) nvars)))
+
 (define-netcdf nc_inq_var
   (_fun (ncid : _int)
         (varid : _int)
@@ -215,6 +240,13 @@
         (varid : (_ptr o _int))
         -> (result : _int)
         -> (and (check result 'nc_inq_varid) varid)))
+
+(define-netcdf nc_inq_varnatts
+  (_fun (ncid : _int)
+        (varid : _int)
+        (natts : (_ptr o _int))
+        -> (result : _int)
+        -> (and (check result 'nc_inq_varnatts) natts)))
 
 (define-netcdf nc_get_att_text
   (_fun (ncid : _int)
@@ -260,6 +292,15 @@
         (arr : (_cvector i))
         -> (result : _int)
         -> (check result 'nc_put_var)))
+
+(define-netcdf nc_put_vara
+  (_fun (ncid : _int)
+        (varid : _int)
+        (start : (_list i _size))
+        (counts : (_list i _size))
+        (arr : (_cvector i))
+        -> (result : _int)
+        -> (check result 'nc_put_vara)))
 
 (define-netcdf nc_put_vara_float
   (_fun (ncid : _int)
