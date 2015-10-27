@@ -3,18 +3,30 @@
 (require racket/system
          ffi/unsafe
          ffi/cvector
-         "ffi.rkt")
+         "ffi.rkt"
+         "ffi-constants.rkt")
 
 (provide
+  ;; Returns the corresponding Racket type for a NetCDF data type.
+  data-type->type
   ;; Returns an association list of dimension names and lengths.
   dimensions
+  create-dimensions*!
   ;; Returns a Dataset struct from a supported path.
   open-dataset
+  ;; Returns a Variable or Dataset (global) attribute value.
+  attribute
+  ;; Returns all Variable or Dataset (global) attribute values.
+  attributes
+  ;; Sets Variable or Dataset (global) attribute values.
+  set-attr!
   ;; Returns a list of Variable structs.
-  variables)
+  variables
+  create-variables*!
+  variable-data
+  variable-update-data!)
 
 (struct dataset (ptr path dimensions variables attrs))
-
 ;; Represents a NetCDF "Variable".
 (struct variable (id ncid name dtype ndims dims nattrs))
 
@@ -38,18 +50,48 @@
   (apply variable varid ncid
          (call-with-values (lambda () (nc_inq_var ncid varid)) list)))
 
+(define (put-variable-data! ncid varname data)
+  (nc_put_var ncid (nc_inq_varid ncid varname) data))
+
 (define (create-variables*! ncid . vars)
   (for/list ([var (in-list vars)])
     (apply nc_def_var ncid var)))
 
-(define (attributes ncid [var -1])
+(define (variable-update-data! var start counts data)
+  ((variable-proc var) nc_put_vara start counts data))
+
+(define ((variable-proc var) proc . args)
+  (apply proc (variable-ncid var) (variable-id var) args))
+
+(define (variable-alloc-vec var [size #f])
+  (make-cvector (data-type->type (variable-dtype var))
+                (or size (apply * (map cadr (dimensions (variable-ncid var)))))))
+
+(define variable-data
+  (case-lambda
+    [(var) ((variable-proc var) nc_get_var (variable-alloc-vec var))]
+    [(var start counts) ((variable-proc var) nc_get_vara start counts)]))
+
+(define (attribute dv k)
+  (if (variable? dv)
+    ((variable-proc dv) nc_get_att_text k)
+    (nc_get_att_text dv NC_GLOBAL k)))
+
+(define (attributes ncid [var NC_GLOBAL])
   (for/list ([i (in-range
                   (case var
-                    [(-1) (nc_inq_natts ncid)]
+                    [(NC_GLOBAL) (nc_inq_natts ncid)]
                     [else (nc_inq_varnatts ncid var)]))])
     (let* ([attr (nc_inq_attname ncid var i)]
            [val (nc_get_att_text ncid var attr)])
       (list attr val))))
+
+(define (set-attr! dv k v)
+  ; Attribute strings must be null terminated.
+  (let ([v-term (string-nul-terminate v)])
+    (if (variable? dv)
+      ((variable-proc dv) nc_put_att_text k v-term)
+      (nc_put_att_text dv NC_GLOBAL k v-term))))
 
 (define (make-dataset ncid path)
   (dataset ncid path
@@ -78,36 +120,9 @@
     [(NC_UINT64) _uint64]
     [(NC_STRING) _string]))
 
-(define (put-variable-data! ncid varname data)
-  (nc_put_var ncid (nc_inq_varid ncid varname) data))
-
-(define (variable-update-data! var start counts data)
-  ((variable-proc var) nc_put_vara start counts data))
-
-(define ((variable-proc var) proc . args)
-  (apply proc (variable-ncid var) (variable-id var) args))
-
-(define variable-vec
-  (case-lambda
-    [(var)
-     (define vec (make-cvector
-                   (data-type->type (variable-dtype var))
-                   (apply * (map cadr (dimensions (variable-ncid var))))))
-     ((variable-proc var) nc_get_var vec)]
-    [(var start counts) ((variable-proc var) nc_get_vara start counts)]))
-
-(define (dataset-attr-set! ncid k v)
-  (nc_put_att_text ncid -1 k v))
-
 (define (string-nul-terminate str)
   (cond [(string-no-nuls? str) (string-append str "\0")]
         [else str]))
-
-(define (set-attr! nc/var k v)
-  (define v-term (string-nul-terminate v))
-  (if (variable? nc/var)
-    ((variable-proc nc/var) nc_put_att_text k v-term)
-    (nc_put_att_text nc/var -1 k v-term)))
 
 (module+ test
   (require rackunit
@@ -127,11 +142,10 @@
                                       `("longitude" ,nx)))
     (check-equal? (dimensions nc) '(("latitude" 6) ("longitude" 12)))
 
-    (define vars (create-variables*! nc
-                                     `("latitude" NC_FLOAT ,(take dims 1))
-                                     `("longitude" NC_FLOAT ,(cdr dims))
-                                     `("tmax" NC_FLOAT ,dims)))
-    (define vlst (variables nc))
+    (create-variables*! nc `("latitude" NC_FLOAT ,(take dims 1))
+                           `("longitude" NC_FLOAT ,(cdr dims))
+                           `("tmax" NC_FLOAT ,dims))
+    (define vars (variables nc))
     (put-variable-data! nc "latitude"
                         (list->cvector (range 0.0 ny) _float))
     (put-variable-data! nc "longitude"
@@ -139,14 +153,16 @@
     (define tmax-cvec
       (list->cvector (build-list (* nx ny) (lambda (_) (random))) _float))
     (put-variable-data! nc "tmax" tmax-cvec)
+
     (define tmax-out-cvec (make-cvector _float (* nx ny)))
-    (check-cvector-equal? (variable-vec (last vlst)) tmax-cvec)
+    (check-cvector-equal? (variable-data (last vars)) tmax-cvec)
 
     (define new-cvec (cvector _float 0.0 1.0 2.0 3.0))
-    (variable-update-data! (last vlst) '(2 2) '(4 4) new-cvec)
-    (check-cvector-equal? (nc_get_vara_float nc (last vars) '(2 2) '(4 4))
-                          new-cvec)
+    (variable-update-data! (last vars) '(2 2) '(4 4) new-cvec)
+    (check-cvector-equal? (variable-data (last vars) '(2 2) '(4 4)) new-cvec)
 
-    (set-attr! (car vlst) "units" "degrees_north")
-    (check-equal? (nc_get_att_text nc (car vars) "units") "degrees_north")
-    (set-attr! nc "title" "climate projections")))
+    (set-attr! (car vars) "units" "degrees_north")
+    (check-equal? (attribute (car vars) "units") "degrees_north")
+
+    (set-attr! nc "title" "climate projections")
+    (check-equal? (attributes nc) '(("title" "climate projections")))))

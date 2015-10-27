@@ -85,6 +85,14 @@
 (define NC_FORMAT_DAP2    5)
 (define NC_FORMAT_DAP4    6)
 
+;/** Let nc__create() or nc__open() figure out a suitable buffer size. */
+(define NC_SIZEHINT_DEFAULT 0)
+;/** In nc__enddef(), align to the buffer size. */
+;#define NC_ALIGN_CHUNK ((size_t)(-1))
+;/** Size argument to nc_def_dim() for an unlimited dimension. */
+;#define NC_UNLIMITED 0L
+;/** Attribute id to put/get a global attribute. */
+(define NC_GLOBAL -1)
 
 ;/**
 ;Maximum for classic library.
