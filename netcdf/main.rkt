@@ -3,8 +3,7 @@
 (require racket/system
          ffi/unsafe
          ffi/cvector
-         "ffi.rkt"
-         "ffi-constants.rkt")
+         "ffi.rkt")
 
 (provide
   ;; Returns the corresponding Racket type for a NetCDF data type.
