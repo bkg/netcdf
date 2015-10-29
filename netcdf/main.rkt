@@ -156,7 +156,7 @@
     (define tmax-out-cvec (make-cvector _float (* nx ny)))
     (check-cvector-equal? (variable-data (last vars)) tmax-cvec)
 
-    (define new-cvec (cvector _float 0.0 1.0 2.0 3.0))
+    (define new-cvec (apply cvector _float (range 0.0 16.0)))
     (variable-update-data! (last vars) '(2 2) '(4 4) new-cvec)
     (check-cvector-equal? (variable-data (last vars) '(2 2) '(4 4)) new-cvec)
 
@@ -164,4 +164,5 @@
     (check-equal? (attribute (car vars) "units") "degrees_north")
 
     (set-attr! nc "title" "climate projections")
-    (check-equal? (attributes nc) '(("title" "climate projections")))))
+    (check-equal? (attributes nc) '(("title" "climate projections")))
+    (nc_close nc)))

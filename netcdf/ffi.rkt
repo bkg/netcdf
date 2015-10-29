@@ -67,7 +67,7 @@
            NC_CHAR = 2
            NC_SHORT = 3
            NC_INT =  4
-           ; Deprecated alias kept for backword compat.
+           ; Deprecated alias kept for backward compat.
            NC_LONG = 4
            NC_FLOAT = 5
            NC_DOUBLE = 6
@@ -271,7 +271,7 @@
         (varid : _int)
         (start : (_list i _size))
         (counts : (_list i _size))
-        (size : _? = (apply * (map - counts start)))
+        (size : _? = (apply * counts))
         (vec : (_cvector o _float size))
         -> (result : _int)
         -> (and (check result 'nc_get_vara_float) vec)))
