@@ -264,6 +264,17 @@
         -> (result : _int)
         -> (and (check result 'nc_get_var) vec)))
 
+;; Read into an array, no data conversion is done.
+(define-netcdf nc_get_vara
+  (_fun (ncid : _int)
+        (varid : _int)
+        (start : (_list i _size))
+        (counts : (_list i _size))
+        (size : _? = (apply * counts))
+        (vec : (_cvector i))
+        -> (result : _int)
+        -> (and (check result 'nc_get_vara) vec)))
+
 ;; Read an array of values from a variable, converts data to output type as
 ;; needed.
 (define-netcdf nc_get_vara_float

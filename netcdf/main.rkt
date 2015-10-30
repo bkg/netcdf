@@ -34,6 +34,13 @@
     (let-values ([(dimname dimlen) (nc_inq_dim ncid i)])
       (list dimname dimlen))))
 
+(define (make-dimension dimid ncid)
+  (call-with-values (lambda () (nc_inq_dim ncid dimid)) list))
+
+(define (variable-dimensions var)
+  (for/list ([i (in-list (variable-dims var))])
+    (make-dimension i (variable-ncid var))))
+
 (define (create-dimensions*! ncid . dims)
   (for/list ([dim (in-list dims)])
     (apply nc_def_dim ncid dim)))
@@ -42,12 +49,12 @@
   (for/list ([i (in-range (nc_inq_nvars ncid))])
     (make-variable i ncid)))
 
-(define (variable-ref ncid name)
-  (make-variable (nc_inq_varid ncid name) ncid))
-
 (define (make-variable varid ncid)
   (apply variable varid ncid
          (call-with-values (lambda () (nc_inq_var ncid varid)) list)))
+
+(define (dataset-ref ncid name)
+  (make-variable (nc_inq_varid ncid name) ncid))
 
 (define (put-variable-data! ncid varname data)
   (nc_put_var ncid (nc_inq_varid ncid varname) data))
@@ -62,14 +69,16 @@
 (define ((variable-proc var) proc . args)
   (apply proc (variable-ncid var) (variable-id var) args))
 
-(define (variable-alloc-vec var [size #f])
+(define (make-variable-cvector var [size #f])
   (make-cvector (data-type->type (variable-dtype var))
-                (or size (apply * (map cadr (dimensions (variable-ncid var)))))))
+                (or size (apply * (map cadr (variable-dimensions var))))))
 
 (define variable-data
   (case-lambda
-    [(var) ((variable-proc var) nc_get_var (variable-alloc-vec var))]
-    [(var start counts) ((variable-proc var) nc_get_vara start counts)]))
+    [(var) ((variable-proc var) nc_get_var (make-variable-cvector var))]
+    [(var start counts)
+     ((variable-proc var) nc_get_vara start counts
+                          (make-variable-cvector var (apply * counts)))]))
 
 (define (attribute dv k)
   (if (variable? dv)
