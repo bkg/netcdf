@@ -6,8 +6,6 @@
          "ffi.rkt")
 
 (provide
-  ;; Returns the corresponding Racket type for a NetCDF data type.
-  data-type->type
   ;; Returns an association list of dimension names and lengths.
   dimensions
   create-dimensions*!
@@ -23,51 +21,42 @@
   variables
   create-variables*!
   variable-data
-  variable-update-data!)
+  variable-copy!)
 
 (struct dataset (ptr path dimensions variables attrs))
-;; Represents a NetCDF "Variable".
-(struct variable (id ncid name dtype ndims dims nattrs))
 
-(define (dimensions ncid)
-  (for/list ([i (in-range (nc_inq_ndims ncid))])
-    (let-values ([(dimname dimlen) (nc_inq_dim ncid i)])
+(define (dimensions netcdf-id)
+  (for/list ([i (in-range (nc_inq_ndims netcdf-id))])
+    (let-values ([(dimname dimlen) (nc_inq_dim netcdf-id i)])
       (list dimname dimlen))))
 
-(define (make-dimension dimid ncid)
-  (call-with-values (lambda () (nc_inq_dim ncid dimid)) list))
+(define (make-dimension dimid netcdf-id)
+  (call-with-values (lambda () (nc_inq_dim netcdf-id dimid)) list))
 
 (define (variable-dimensions var)
   (for/list ([i (in-list (variable-dims var))])
-    (make-dimension i (variable-ncid var))))
+    (make-dimension i (variable-netcdf-id var))))
 
-(define (create-dimensions*! ncid . dims)
+(define (create-dimensions*! netcdf-id . dims)
   (for/list ([dim (in-list dims)])
-    (apply nc_def_dim ncid dim)))
+    (apply nc_def_dim netcdf-id dim)))
 
-(define (variables ncid)
-  (for/list ([i (in-range (nc_inq_nvars ncid))])
-    (make-variable i ncid)))
+(define (variables netcdf-id)
+  (for/list ([i (in-range (nc_inq_nvars netcdf-id))])
+    (nc_inq_var netcdf-id i)))
 
-(define (make-variable varid ncid)
-  (apply variable varid ncid
-         (call-with-values (lambda () (nc_inq_var ncid varid)) list)))
+(define (dataset-ref netcdf-id varname)
+  (nc_inq_var netcdf-id (nc_inq_varid netcdf-id varname)))
 
-(define (dataset-ref ncid name)
-  (make-variable (nc_inq_varid ncid name) ncid))
-
-(define (put-variable-data! ncid varname data)
-  (nc_put_var ncid (nc_inq_varid ncid varname) data))
-
-(define (create-variables*! ncid . vars)
+(define (create-variables*! netcdf-id . vars)
   (for/list ([var (in-list vars)])
-    (apply nc_def_var ncid var)))
+    (apply nc_def_var netcdf-id var)))
 
-(define (variable-update-data! var start counts data)
-  ((variable-proc var) nc_put_vara start counts data))
+(define (variable-copy! var start data [counts #f])
+  (nc_put_vara var start (or counts (list (cvector-length data))) data))
 
 (define ((variable-proc var) proc . args)
-  (apply proc (variable-ncid var) (variable-id var) args))
+  (apply proc (variable-netcdf-id var) (variable-id var) args))
 
 (define (make-variable-cvector var [size #f])
   (make-cvector (data-type->type (variable-dtype var))
@@ -75,24 +64,23 @@
 
 (define variable-data
   (case-lambda
-    [(var) ((variable-proc var) nc_get_var (make-variable-cvector var))]
-    [(var start counts)
-     ((variable-proc var) nc_get_vara start counts
-                          (make-variable-cvector var (apply * counts)))]))
+    [(var) (nc_get_var var (make-variable-cvector var))]
+    [(var start counts) (nc_get_vara var start counts)]))
 
 (define (attribute dv k)
   (if (variable? dv)
     ((variable-proc dv) nc_get_att_text k)
     (nc_get_att_text dv NC_GLOBAL k)))
 
-(define (attributes ncid [var NC_GLOBAL])
-  (for/list ([i (in-range
-                  (case var
-                    [(NC_GLOBAL) (nc_inq_natts ncid)]
-                    [else (nc_inq_varnatts ncid var)]))])
-    (let* ([attr (nc_inq_attname ncid var i)]
-           [val (nc_get_att_text ncid var attr)])
-      (list attr val))))
+(define (attributes netcdf-id)
+  (for/list ([i (in-range (nc_inq_natts netcdf-id))])
+    (let ([attr (nc_inq_attname netcdf-id NC_GLOBAL i)])
+      (list attr (attribute netcdf-id attr)))))
+
+(define (variable-attributes var)
+  (for/list ([i (in-range (nc_inq_varnatts var))])
+    (let ([attr ((variable-proc var) nc_inq_attname i)])
+      (list attr (attribute var attr)))))
 
 (define (set-attr! dv k v)
   ; Attribute strings must be null terminated.
@@ -101,10 +89,10 @@
       ((variable-proc dv) nc_put_att_text k v-term)
       (nc_put_att_text dv NC_GLOBAL k v-term))))
 
-(define (make-dataset ncid path)
-  (dataset ncid path
-           (dimensions ncid)
-           (variables ncid)
+(define (make-dataset netcdf-id path)
+  (dataset netcdf-id path
+           (dimensions netcdf-id)
+           (variables netcdf-id)
            #f))
 
 (define (create-dataset path [mode 'clobber])
@@ -112,21 +100,6 @@
 
 (define (open-dataset path #:mode [mode 'read])
   (make-dataset (nc_open path mode) path))
-
-(define (data-type->type data-type)
-  (case data-type
-    [(NC_BYTE NC_CHAR) _byte]
-    [(NC_SHORT) _word]
-    [(NC_INT) _int]
-    [(NC_LONG) _long]
-    [(NC_FLOAT) _float]
-    [(NC_DOUBLE) _double*]
-    [(NC_UBYTE) _ubyte]
-    [(NC_USHORT) _ushort]
-    [(NC_UINT) _uint]
-    [(NC_INT64) _int64]
-    [(NC_UINT64) _uint64]
-    [(NC_STRING) _string]))
 
 (define (string-nul-terminate str)
   (cond [(string-no-nuls? str) (string-append str "\0")]
@@ -154,23 +127,20 @@
                            `("longitude" NC_FLOAT ,(cdr dims))
                            `("tmax" NC_FLOAT ,dims))
     (define vars (variables nc))
-    (put-variable-data! nc "latitude"
-                        (list->cvector (range 0.0 ny) _float))
-    (put-variable-data! nc "longitude"
-                        (list->cvector (range 0.0 nx) _float))
+    (nc_put_var (car vars) (list->cvector (range 0.0 ny) _float))
+    (nc_put_var (cadr vars) (list->cvector (range 0.0 nx) _float))
     (define tmax-cvec
       (list->cvector (build-list (* nx ny) (lambda (_) (random))) _float))
-    (put-variable-data! nc "tmax" tmax-cvec)
-
-    (define tmax-out-cvec (make-cvector _float (* nx ny)))
+    (nc_put_var (last vars) tmax-cvec)
     (check-cvector-equal? (variable-data (last vars)) tmax-cvec)
 
     (define new-cvec (apply cvector _float (range 0.0 16.0)))
-    (variable-update-data! (last vars) '(2 2) '(4 4) new-cvec)
+    (variable-copy! (last vars) '(2 2) new-cvec '(4 4))
     (check-cvector-equal? (variable-data (last vars) '(2 2) '(4 4)) new-cvec)
 
     (set-attr! (car vars) "units" "degrees_north")
     (check-equal? (attribute (car vars) "units") "degrees_north")
+    (check-equal? (variable-attributes (car vars)) '(("units" "degrees_north")))
 
     (set-attr! nc "title" "climate projections")
     (check-equal? (attributes nc) '(("title" "climate projections")))
