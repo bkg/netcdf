@@ -28,7 +28,7 @@
 (define (dimensions netcdf-id)
   (for/list ([i (in-range (nc_inq_ndims netcdf-id))])
     (let-values ([(dimname dimlen) (nc_inq_dim netcdf-id i)])
-      (list dimname dimlen))))
+      (cons dimname dimlen))))
 
 (define (make-dimension dimid netcdf-id)
   (call-with-values (lambda () (nc_inq_dim netcdf-id dimid)) list))
@@ -121,7 +121,7 @@
     (define dims (create-dimensions*! nc
                                       `("latitude" ,ny)
                                       `("longitude" ,nx)))
-    (check-equal? (dimensions nc) '(("latitude" 6) ("longitude" 12)))
+    (check-equal? (dimensions nc) '(("latitude" . 6) ("longitude" . 12)))
 
     (create-variables*! nc `("latitude" NC_FLOAT ,(take dims 1))
                            `("longitude" NC_FLOAT ,(cdr dims))
