@@ -63,8 +63,12 @@
   (for/list ([var (in-list vars)])
     (apply nc_def_var netcdf-id var)))
 
-(define (variable-copy! var start data [counts #f])
-  (nc_put_vara var start (or counts (list (cvector-length data))) data))
+(define variable-copy!
+  (case-lambda
+    [(var data) (nc_put_var var data)]
+    [(var start data)
+     (nc_put_vara var start (list (cvector-length data)) data)]
+    [(var start data counts) (nc_put_vara var start counts data)]))
 
 (define ((variable-proc var) proc . args)
   (apply proc (variable-netcdf-id var) (variable-id var) args))
@@ -142,8 +146,8 @@
                            `("longitude" NC_FLOAT ,(cdr dims))
                            `("tmax" NC_FLOAT ,dims))
     (define vars (variables nc))
-    (nc_put_var (car vars) (list->cvector (range 0.0 ny) _float))
-    (nc_put_var (cadr vars) (list->cvector (range 0.0 nx) _float))
+    (variable-copy! (car vars) (list->cvector (range 0.0 ny) _float))
+    (variable-copy! (cadr vars) (list->cvector (range 0.0 nx) _float))
     (define tmax-cvec
       (list->cvector (build-list (* nx ny) (lambda (_) (random))) _float))
     (nc_put_var (last vars) tmax-cvec)
