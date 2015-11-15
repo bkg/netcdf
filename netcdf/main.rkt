@@ -35,7 +35,7 @@
   ;; Returns a list of Variable dimension lengths.
   variable-shape)
 
-(struct dataset (ptr path dimensions variables attrs))
+(struct dataset (id path dimensions variables attrs))
 
 (define (dimensions netcdf-id)
   (for/list ([i (in-range (nc_inq_ndims netcdf-id))])
