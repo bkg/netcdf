@@ -5,9 +5,14 @@
          "ffi.rkt")
 
 (provide
+  ;; Returns a Variable by name from a Dataset.
+  dataset-ref
   ;; Returns an association list of dimension names and lengths.
   dimensions
+  ;; Write dimensions to a Dataset.
   create-dimensions*!
+  ;; Returns a Dataset struct for a newly created NetCDF resource.
+  create-dataset
   ;; Returns a Dataset struct from a supported path.
   open-dataset
   ;; Returns a Variable or Dataset (global) attribute value.
@@ -18,9 +23,17 @@
   set-attr!
   ;; Returns a list of Variable structs.
   variables
+  ;; Write variables to a Dataset.
   create-variables*!
+  ;; Returns a list of Variable attributes.
+  variable-attributes
+  ;; Returns a cvector of Variable data.
   variable-data
-  variable-copy!)
+  variable-copy!
+  ;; Returns a list of a Variable's dimensions.
+  variable-dimensions
+  ;; Returns a list of Variable dimension lengths.
+  variable-shape)
 
 (struct dataset (ptr path dimensions variables attrs))
 
