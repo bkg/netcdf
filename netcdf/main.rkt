@@ -29,7 +29,7 @@
     (make-dimension i netcdf-id)))
 
 (define (make-dimension dimid netcdf-id)
-  (call-with-values (lambda () (nc_inq_dim netcdf-id dimid)) list))
+  (call-with-values (lambda () (nc_inq_dim netcdf-id dimid)) cons))
 
 (define (variable-dimensions var)
   (for/list ([i (in-list (variable-dims var))])
@@ -58,12 +58,15 @@
 
 (define (make-variable-cvector var [size #f])
   (make-cvector (data-type->type (variable-dtype var))
-                (or size (apply * (map cadr (variable-dimensions var))))))
+                (or size (apply * (variable-shape var)))))
 
 (define variable-data
   (case-lambda
     [(var) (nc_get_var var (make-variable-cvector var))]
     [(var start counts) (nc_get_vara var start counts)]))
+
+(define (variable-shape var)
+  (map cdr (variable-dimensions var)))
 
 (define (attribute dv k)
   (if (variable? dv)
@@ -132,6 +135,7 @@
       (list->cvector (build-list (* nx ny) (lambda (_) (random))) _float))
     (nc_put_var (last vars) tmax-cvec)
     (check-cvector-equal? (variable-data (last vars)) tmax-cvec)
+    (check-equal? (variable-shape (last vars)) (list ny nx))
 
     (define new-cvec (apply cvector _float (range 0.0 16.0)))
     (variable-copy! (last vars) '(2 2) new-cvec '(4 4))
