@@ -1,7 +1,6 @@
 #lang racket/base
 
 (require racket/system
-         ffi/unsafe
          ffi/cvector
          "ffi.rkt")
 
@@ -108,6 +107,7 @@
 (module+ test
   (require rackunit
            racket/list
+           ffi/unsafe
            ffi/cvector)
 
   (define-simple-check (check-cvector-equal? a b)
