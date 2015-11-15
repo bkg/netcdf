@@ -26,8 +26,7 @@
 
 (define (dimensions netcdf-id)
   (for/list ([i (in-range (nc_inq_ndims netcdf-id))])
-    (let-values ([(dimname dimlen) (nc_inq_dim netcdf-id i)])
-      (cons dimname dimlen))))
+    (make-dimension i netcdf-id)))
 
 (define (make-dimension dimid netcdf-id)
   (call-with-values (lambda () (nc_inq_dim netcdf-id dimid)) list))
