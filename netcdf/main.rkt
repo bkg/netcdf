@@ -150,7 +150,7 @@
     (variable-copy! (cadr vars) (list->cvector (range 0.0 nx) _float))
     (define tmax-cvec
       (list->cvector (build-list (* nx ny) (lambda (_) (random))) _float))
-    (nc_put_var (last vars) tmax-cvec)
+    (variable-copy! (last vars) tmax-cvec)
     (check-cvector-equal? (variable-data (last vars)) tmax-cvec)
     (check-equal? (variable-shape (last vars)) (list ny nx))
 
