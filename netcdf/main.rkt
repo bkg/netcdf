@@ -70,7 +70,7 @@
      (nc_put_vara var start (list (cvector-length data)) data)]
     [(var start data counts) (nc_put_vara var start counts data)]))
 
-(define ((variable-proc var) proc . args)
+(define ((variable-idents var) proc . args)
   (apply proc (variable-netcdf-id var) (variable-id var) args))
 
 (define (make-variable-cvector var [size #f])
@@ -87,24 +87,24 @@
 
 (define (attribute dv k)
   (if (variable? dv)
-    ((variable-proc dv) nc_get_att_text k)
+    ((variable-idents dv) nc_get_att_text k)
     (nc_get_att_text dv NC_GLOBAL k)))
 
 (define (attributes netcdf-id)
   (for/list ([i (in-range (nc_inq_natts netcdf-id))])
     (let ([attr (nc_inq_attname netcdf-id NC_GLOBAL i)])
-      (list attr (attribute netcdf-id attr)))))
+      (cons attr (attribute netcdf-id attr)))))
 
 (define (variable-attributes var)
   (for/list ([i (in-range (nc_inq_varnatts var))])
-    (let ([attr ((variable-proc var) nc_inq_attname i)])
-      (list attr (attribute var attr)))))
+    (let ([attr ((variable-idents var) nc_inq_attname i)])
+      (cons attr (attribute var attr)))))
 
 (define (set-attr! dv k v)
   ; Attribute strings must be null terminated.
   (let ([v-term (string-nul-terminate v)])
     (if (variable? dv)
-      ((variable-proc dv) nc_put_att_text k v-term)
+      ((variable-idents dv) nc_put_att_text k v-term)
       (nc_put_att_text dv NC_GLOBAL k v-term))))
 
 (define (make-dataset netcdf-id path)
@@ -160,8 +160,9 @@
 
     (set-attr! (car vars) "units" "degrees_north")
     (check-equal? (attribute (car vars) "units") "degrees_north")
-    (check-equal? (variable-attributes (car vars)) '(("units" "degrees_north")))
+    (check-equal? (variable-attributes (car vars))
+                  '(("units" . "degrees_north")))
 
     (set-attr! nc "title" "climate projections")
-    (check-equal? (attributes nc) '(("title" "climate projections")))
+    (check-equal? (attributes nc) '(("title" . "climate projections")))
     (nc_close nc)))
