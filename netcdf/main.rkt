@@ -50,7 +50,7 @@
 
 (define (create-dimensions*! netcdf-id . dims)
   (for/list ([dim (in-list dims)])
-    (apply nc_def_dim netcdf-id dim)))
+    (nc_def_dim netcdf-id (car dim) (cdr dim))))
 
 (define (variables netcdf-id)
   (for/list ([i (in-range (nc_inq_nvars netcdf-id))])
@@ -138,8 +138,8 @@
     (define nx 12)
     (define ny 6)
     (define dims (create-dimensions*! nc
-                                      `("latitude" ,ny)
-                                      `("longitude" ,nx)))
+                                      `("latitude" . ,ny)
+                                      `("longitude" . ,nx)))
     (check-equal? (dimensions nc) '(("latitude" . 6) ("longitude" . 12)))
 
     (create-variables*! nc `("latitude" NC_FLOAT ,(take dims 1))
