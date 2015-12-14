@@ -126,8 +126,7 @@
 (module+ test
   (require rackunit
            racket/list
-           ffi/unsafe
-           ffi/cvector)
+           ffi/unsafe)
 
   (define-simple-check (check-cvector-equal? a b)
     (check-equal? (cvector->list a) (cvector->list b)))
