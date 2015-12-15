@@ -152,7 +152,7 @@
 
 (define-netcdf nc_def_var_deflate
   (_fun (netcdf-id : _int)
-        (var : _variable)
+        (var-id : _int)
         (shuffle? : _int)
         (deflate? : _int)
         (deflate-level : _int)
@@ -278,6 +278,16 @@
         (natts : (_ptr o _int))
         -> (result : _int)
         -> (and (check result 'nc_inq_varnatts) natts)))
+
+(define-netcdf nc_inq_var_deflate
+  (_fun (_int = (variable-netcdf-id var))
+        (var : _variable)
+        (shuffle : (_ptr o _int))
+        (deflate : (_ptr o _int))
+        (deflate-level : (_ptr o _int))
+        -> (result : _int)
+        -> (and (check result 'nc_inq_var_deflate)
+                (list shuffle deflate deflate-level))))
 
 (define-netcdf nc_get_att_text
   (_fun (netcdf-id : _int)
