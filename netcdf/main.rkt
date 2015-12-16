@@ -63,7 +63,7 @@
   (for/list ([var (in-list vars)])
     (let ([variable-id (apply nc_def_var netcdf-id var)])
       (when deflate?
-        (nc_def_var_deflate netcdf-id variable-id 1 1 6))
+        (nc_def_var_deflate netcdf-id variable-id #t #t 6))
       (nc_inq_var netcdf-id variable-id))))
 
 (define variable-copy!
@@ -149,7 +149,7 @@
                           `("latitude" NC_FLOAT ,(take dims 1))
                           `("longitude" NC_FLOAT ,(cdr dims))
                           `("tmax" NC_FLOAT ,dims)))
-    (check-equal? (nc_inq_var_deflate (last vars)) '(1 1 6))
+    (check-equal? (nc_inq_var_deflate (last vars)) '(#t #t 6))
     (check-equal? (variables nc) vars)
     (variable-copy! (car vars) (list->cvector (range 0.0 ny) _float))
     (variable-copy! (cadr vars) (list->cvector (range 0.0 nx) _float))
