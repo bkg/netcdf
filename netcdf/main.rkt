@@ -110,6 +110,13 @@
       ((variable-idents dv) nc_put_att_text k v-term)
       (nc_put_att_text dv NC_GLOBAL k v-term))))
 
+(define (dataset-spec netcdf-id)
+  (define (var-fields v)
+    (map (lambda (fn) (fn v))
+         (list variable-name variable-dtype variable-dims)))
+  (hash 'dimensions (dimensions netcdf-id)
+        'variables (map var-fields (variables netcdf-id))))
+
 (define (make-dataset netcdf-id path)
   (dataset netcdf-id path
            (dimensions netcdf-id)
