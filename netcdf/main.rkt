@@ -5,8 +5,10 @@
          "ffi.rkt")
 
 (provide
+  (struct-out dataset)
   ;; Returns a Variable by name from a Dataset.
   dataset-ref
+  dataset-spec
   ;; Returns an association list of dimension names and lengths.
   dimensions
   ;; Write dimensions to a Dataset.
