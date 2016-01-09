@@ -124,6 +124,13 @@
         -> (result : _int)
         -> (check result 'nc_close)))
 
+(define-netcdf nc_copy_var
+  (_fun (_int = (variable-netcdf-id var))
+        (var : _variable)
+        (netcdf-id-out : _int)
+        -> (result : _int)
+        -> (check result 'nc_copy_var)))
+
 (define-netcdf nc_def_dim
   (_fun (netcdf-id : _int)
         (dimname : _string)
