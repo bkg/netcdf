@@ -13,7 +13,7 @@
 (define-ffi-definer define-netcdf (ffi-lib "libnetcdf"))
 
 ;; Represents a NetCDF "Variable".
-(struct variable (id netcdf-id name dtype ndims dims nattrs))
+(struct variable (id netcdf-id name dtype ndims dims nattrs) #:transparent)
 (define _variable
   (make-ctype _int variable-id #f))
 
