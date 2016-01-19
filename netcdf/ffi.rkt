@@ -17,7 +17,19 @@
 (define _variable
   (make-ctype _int variable-id #f))
 
-;; Returns the corresponding Racket type for a NetCDF data type.
+(define _variable-or-global
+  (make-ctype _int
+              (lambda (var)
+                (cond [(variable? var) (variable-id var)]
+                      [else NC_GLOBAL]))
+              #f))
+
+(define (->data-type v)
+  (cond [(string? v) 'NC_STRING]
+        [(flonum? v) 'NC_FLOAT]
+        [(integer? v) 'NC_INT]))
+
+;; Returns the corresponding Racket C type for a NetCDF data type.
 (define (data-type->type data-type)
   (case data-type
     ;[(NC_NAT) (error 'data-type->type "not a type")]
@@ -325,16 +337,31 @@
         -> (result : _int)
         -> (and (check result 'nc_get_vara) vec)))
 
+(define-netcdf nc_put_att
+  (_fun (dv name value) ::
+        (netcdf-id : _int = (if (variable? dv) (variable-netcdf-id dv) dv))
+        (dv : _variable-or-global)
+        (name : _string)
+        (type : _data-type = (->data-type value))
+        (size : _size = 1)
+        (_pointer = (let* ([ctype (data-type->type type)]
+                           [ptr (malloc size ctype)])
+                      (ptr-set! ptr ctype value)
+                      ptr))
+        -> (result : _int)
+        -> (check result 'nc_put_att)))
+
 (define-netcdf nc_put_att_text
-  (_fun (netcdf-id : _int)
-        (var-id : _int)
+  (_fun (dv name value) ::
+        (netcdf-id : _int = (if (variable? dv) (variable-netcdf-id dv) dv))
+        (dv : _variable-or-global)
         (name : _string)
         (_size = (string-length value))
         (value : _string)
         -> (result : _int)
         -> (check result 'nc_put_att_text)))
 
-;; Write the entire var with one call.
+;; Writes the entire var with a single call.
 (define-netcdf nc_put_var
   (_fun (_int = (variable-netcdf-id var))
         (var : _variable)

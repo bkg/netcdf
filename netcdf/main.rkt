@@ -5,6 +5,12 @@
          "ffi.rkt")
 
 (provide
+  ;; Returns a Variable or Dataset (global) attribute value.
+  attribute
+  ;; Returns all Variable or Dataset (global) attribute values.
+  attributes
+  ;; Sets Variable or Dataset (global) attribute values.
+  attribute-set!
   (struct-out dataset)
   ;; Returns a Variable by name from a Dataset.
   dataset-ref
@@ -17,12 +23,6 @@
   create-dataset
   ;; Returns a Dataset struct from a supported path.
   open-dataset
-  ;; Returns a Variable or Dataset (global) attribute value.
-  attribute
-  ;; Returns all Variable or Dataset (global) attribute values.
-  attributes
-  ;; Sets Variable or Dataset (global) attribute values.
-  set-attr!
   ;; Returns a list of Variable structs.
   variables
   ;; Write variables to a Dataset.
@@ -105,12 +105,11 @@
     (let ([attr ((variable-idents var) nc_inq_attname i)])
       (cons attr (attribute var attr)))))
 
-(define (set-attr! dv k v)
-  ; Attribute strings must be null terminated.
-  (let ([v-term (string-nul-terminate v)])
-    (if (variable? dv)
-      ((variable-idents dv) nc_put_att_text k v-term)
-      (nc_put_att_text dv NC_GLOBAL k v-term))))
+(define (attribute-set! dv k v)
+  (cond [(string? v)
+         ; Attribute strings must be null terminated.
+         (nc_put_att_text dv k (string-nul-terminate v))]
+        [else (nc_put_att dv k v)]))
 
 (define (dataset-spec netcdf-id)
   (define (var-fields v)
@@ -172,11 +171,11 @@
     (variable-copy! (last vars) '(2 2) new-cvec '(4 4))
     (check-cvector-equal? (variable-data (last vars) '(2 2) '(4 4)) new-cvec)
 
-    (set-attr! (car vars) "units" "degrees_north")
+    (attribute-set! (car vars) "units" "degrees_north")
     (check-equal? (attribute (car vars) "units") "degrees_north")
     (check-equal? (variable-attributes (car vars))
                   '(("units" . "degrees_north")))
 
-    (set-attr! nc "title" "climate projections")
+    (attribute-set! nc "title" "climate projections")
     (check-equal? (attributes nc) '(("title" . "climate projections")))
     (nc_close nc)))
