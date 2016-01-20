@@ -24,6 +24,13 @@
                       [else NC_GLOBAL]))
               #f))
 
+(define _dataset
+  (make-ctype _int
+              (lambda (dvar)
+                (cond [(variable? dvar) (variable-netcdf-id dvar)]
+                      [else dvar]))
+              #f))
+
 (define (->data-type v)
   (cond [(string? v) 'NC_STRING]
         [(flonum? v) 'NC_FLOAT]
@@ -209,10 +216,11 @@
         -> (result : _int)
         -> (and (check result 'nc_inq_natts) natts)))
 
-;; Returns the length and data type of a Dataset or Variable attribute.
+;; Returns the data type and length of a Dataset or Variable attribute.
 (define-netcdf nc_inq_att
-  (_fun (netcdf-id : _int)
-        (var : _variable)
+  (_fun (dvar name) ::
+        (netcdf-id : _dataset = dvar)
+        (var-id : _variable-or-global = dvar)
         (name : _string)
         (dtype : (_ptr o _data-type))
         (len : (_ptr o _size))
@@ -222,8 +230,9 @@
 
 ;; Returns the length of a Dataset or Variable attribute.
 (define-netcdf nc_inq_attlen
-  (_fun (netcdf-id : _int)
-        (var-id : _int)
+  (_fun (dvar name) ::
+        (netcdf-id : _dataset = dvar)
+        (var-id : _variable-or-global = dvar)
         (name : _string)
         (len : (_ptr o _size))
         -> (result : _int)
@@ -232,8 +241,9 @@
 ;; Returns the Dataset or Variable attribute name corresponding to an attribute
 ;; index.
 (define-netcdf nc_inq_attname
-  (_fun (netcdf-id : _int)
-        (var-id : _int)
+  (_fun (dvar attnum) ::
+        (netcdf-id : _dataset = dvar)
+        (var-id : _variable-or-global = dvar)
         (attnum : _int)
         (attname : (_bytes o NC_MAX_NAME))
         -> (result : _int)
@@ -308,14 +318,29 @@
         -> (and (check result 'nc_inq_var_deflate)
                 (list shuffle? deflate? deflate-level))))
 
-(define-netcdf nc_get_att_text
-  (_fun (netcdf-id : _int)
-        (var-id : _int)
+(define-netcdf nc_get_att
+  (_fun (dvar name) ::
+        (netcdf-id : _dataset = dvar)
+        (var-id : _variable-or-global = dvar)
         (name : _string)
-        (size : _? = (nc_inq_attlen netcdf-id var-id name))
+        (size : _? = 1)
+        (type : _? = (let-values ([(type size) (nc_inq_att dvar name)])
+                      (data-type->type type)))
+        (ptr : _pointer = (malloc size type))
+        -> (result : _int)
+        -> (and (check result 'nc_get_att)
+                (ptr-ref ptr type))))
+
+(define-netcdf nc_get_att_text
+  (_fun (dvar name) ::
+        (netcdf-id : _dataset = dvar)
+        (var-id : _variable-or-global = dvar)
+        (name : _string)
+        (size : _? = (nc_inq_attlen dvar name))
         (value : (_bytes o size))
         -> (result : _int)
-        -> (and (check result 'nc_get_att_text) (cast value _bytes _string))))
+        -> (and (check result 'nc_get_att_text)
+                (cast value _bytes _string))))
 
 ;; Read entire var in a single call.
 (define-netcdf nc_get_var
@@ -338,9 +363,9 @@
         -> (and (check result 'nc_get_vara) vec)))
 
 (define-netcdf nc_put_att
-  (_fun (dv name value) ::
-        (netcdf-id : _int = (if (variable? dv) (variable-netcdf-id dv) dv))
-        (dv : _variable-or-global)
+  (_fun (dvar name value) ::
+        (netcdf-id : _dataset = dvar)
+        (var-id : _variable-or-global = dvar)
         (name : _string)
         (type : _data-type = (->data-type value))
         (size : _size = 1)
@@ -352,9 +377,9 @@
         -> (check result 'nc_put_att)))
 
 (define-netcdf nc_put_att_text
-  (_fun (dv name value) ::
-        (netcdf-id : _int = (if (variable? dv) (variable-netcdf-id dv) dv))
-        (dv : _variable-or-global)
+  (_fun (dvar name value) ::
+        (netcdf-id : _dataset = dvar)
+        (var-id : _variable-or-global = dvar)
         (name : _string)
         (_size = (string-length value))
         (value : _string)

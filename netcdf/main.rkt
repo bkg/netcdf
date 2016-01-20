@@ -75,9 +75,6 @@
      (nc_put_vara var start (list (cvector-length data)) data)]
     [(var start data counts) (nc_put_vara var start counts data)]))
 
-(define ((variable-idents var) proc . args)
-  (apply proc (variable-netcdf-id var) (variable-id var) args))
-
 (define (make-variable-cvector var [size #f])
   (make-cvector (data-type->type (variable-dtype var))
                 (or size (apply * (variable-shape var)))))
@@ -91,18 +88,19 @@
   (map cdr (variable-dimensions var)))
 
 (define (attribute dv k)
-  (if (variable? dv)
-    ((variable-idents dv) nc_get_att_text k)
-    (nc_get_att_text dv NC_GLOBAL k)))
+  (let-values ([(type size) (nc_inq_att dv k)])
+    (case type
+      [(NC_CHAR NC_STRING) (nc_get_att_text dv k)]
+      [else (nc_get_att dv k)])))
 
 (define (attributes netcdf-id)
   (for/list ([i (in-range (nc_inq_natts netcdf-id))])
-    (let ([attr (nc_inq_attname netcdf-id NC_GLOBAL i)])
+    (let ([attr (nc_inq_attname netcdf-id i)])
       (cons attr (attribute netcdf-id attr)))))
 
 (define (variable-attributes var)
   (for/list ([i (in-range (nc_inq_varnatts var))])
-    (let ([attr ((variable-idents var) nc_inq_attname i)])
+    (let ([attr (nc_inq_attname var i)])
       (cons attr (attribute var attr)))))
 
 (define (attribute-set! dv k v)
@@ -157,8 +155,14 @@
                           `("latitude" NC_FLOAT ,(take dims 1))
                           `("longitude" NC_FLOAT ,(cdr dims))
                           `("tmax" NC_FLOAT ,dims)))
-    (check-equal? (nc_inq_var_deflate (last vars)) '(#t #t 6))
     (check-equal? (variables nc) vars)
+    (check-equal? (nc_inq_var_deflate (last vars)) '(#t #t 6))
+
+    ; _FillValue type must match variable data type and needs to be written
+    ; prior to data.
+    (attribute-set! (last vars) "_FillValue" -9999.0)
+    (check-equal? (attribute (last vars) "_FillValue") -9999.0)
+
     (variable-copy! (car vars) (list->cvector (range 0.0 ny) _float))
     (variable-copy! (cadr vars) (list->cvector (range 0.0 nx) _float))
     (define tmax-cvec
