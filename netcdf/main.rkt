@@ -75,13 +75,9 @@
      (nc_put_vara var start (list (cvector-length data)) data)]
     [(var start data counts) (nc_put_vara var start counts data)]))
 
-(define (make-variable-cvector var [size #f])
-  (make-cvector (data-type->type (variable-dtype var))
-                (or size (apply * (variable-shape var)))))
-
 (define variable-data
   (case-lambda
-    [(var) (nc_get_var var (make-variable-cvector var))]
+    [(var) (nc_get_var var)]
     [(var start counts) (nc_get_vara var start counts)]))
 
 (define (variable-shape var)

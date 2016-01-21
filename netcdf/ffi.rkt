@@ -267,6 +267,13 @@
         -> (and (check result 'nc_inq_dim)
                 (values (cast dimname _bytes _string) dimlen))))
 
+(define-netcdf nc_inq_dimlen
+  (_fun (netcdf-id : _int)
+        (dimid : _int)
+        (dimlen : (_ptr o _size))
+        -> (result : _int)
+        -> (and (check result 'nc_inq_dimlen) dimlen)))
+
 (define-netcdf nc_inq_dimid
   (_fun (netcdf-id : _int)
         (dimname : _string)
@@ -344,9 +351,12 @@
 
 ;; Read entire var in a single call.
 (define-netcdf nc_get_var
-  (_fun (_int = (variable-netcdf-id var))
+  (_fun (netcdf-id : _int = (variable-netcdf-id var))
         (var : _variable)
-        (vec : (_cvector i))
+        (size : _? = (for/product ([dimid (in-list (variable-dims var))])
+                       (nc_inq_dimlen netcdf-id dimid)))
+        (type : _? = (data-type->type (variable-dtype var)))
+        (vec : (_cvector o type size))
         -> (result : _int)
         -> (and (check result 'nc_get_var) vec)))
 
