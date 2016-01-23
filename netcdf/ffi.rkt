@@ -31,6 +31,10 @@
                       [else dvar]))
               #f))
 
+(define-fun-syntax _status
+  (syntax-id-rules (_status)
+    [(_status caller) (type: _int post: (r => (check r caller)))]))
+
 (define (->data-type v)
   (cond [(string? v) 'NC_STRING]
         [(flonum? v) 'NC_FLOAT]
@@ -128,35 +132,33 @@
   (_fun (filename : _file)
         (mode : _open-mode)
         (netcdf-id : (_ptr o _int))
-        -> (result : _int)
-        -> (and (check result 'nc_open) netcdf-id)))
+        -> (_status 'nc_open)
+        -> netcdf-id))
 
 (define-netcdf nc_create
   (_fun (filename : _file)
         (mode : _create-mode)
         (netcdf-id : (_ptr o _int))
-        -> (result : _int)
-        -> (and (check result 'nc_create) netcdf-id)))
+        -> (_status 'nc_create)
+        -> netcdf-id))
 
 (define-netcdf nc_close
   (_fun (netcdf-id : _int)
-        -> (result : _int)
-        -> (check result 'nc_close)))
+        -> (_status 'nc_close)))
 
 (define-netcdf nc_copy_var
   (_fun (_int = (variable-netcdf-id var))
         (var : _variable)
         (netcdf-id-out : _int)
-        -> (result : _int)
-        -> (check result 'nc_copy_var)))
+        -> (_status 'nc_copy_var)))
 
 (define-netcdf nc_def_dim
   (_fun (netcdf-id : _int)
         (dimname : _string)
         (dimlen : _size)
         (dimid : (_ptr o _int))
-        -> (result : _int)
-        -> (and (check result 'nc_def_dim) dimid)))
+        -> (_status 'nc_def_dim)
+        -> dimid))
 
 (define-netcdf nc_def_var
   (_fun (netcdf-id : _int)
@@ -165,16 +167,15 @@
         (_int = (length dimlist))
         (dimlist : (_list i _int))
         (var-id : (_ptr o _int))
-        -> (result : _int)
-        -> (and (check result 'nc_def_var) var-id)))
+        -> (_status 'nc_def_var)
+        -> var-id))
 
 (define-netcdf nc_def_var_chunking
   (_fun (netcdf-id : _int)
         (var-id : _int)
         (storage : _storage-type)
         (chunk-size : (_list i _size))
-        -> (result : _int)
-        -> (check result 'nc_def_var_chunking)))
+        -> (_status 'nc_def_var_chunking)))
 
 (define-netcdf nc_def_var_deflate
   (_fun (netcdf-id : _int)
@@ -182,22 +183,20 @@
         (shuffle? : _bool)
         (deflate? : _bool)
         (deflate-level : _int)
-        -> (result : _int)
-        -> (check result 'nc_def_var_deflate)))
+        -> (_status 'nc_def_var_deflate)))
 
 (define-netcdf nc_inq_format
   (_fun (netcdf-id : _int)
         (nc-format : (_ptr o _dataset-type))
-        -> (result : _int)
-        -> (and (check result 'nc_inq_format) nc-format)))
+        -> (_status 'nc_inq_format)
+        -> nc-format))
 
 (define-netcdf nc_inq_format_extended
   (_fun (netcdf-id : _int)
         (nc-format : (_ptr o _dataset-extended-type))
         (mode : (_ptr o _create-mode))
-        -> (result : _int)
-        -> (and (check result 'nc_inq_format_extended)
-                (values nc-format mode))))
+        -> (_status 'nc_inq_format_extended)
+        -> (values nc-format mode)))
 
 (define-netcdf nc_inq
   (_fun (netcdf-id : _int)
@@ -205,16 +204,15 @@
         (nvars : (_ptr o _int))
         (natts : (_ptr o _int))
         (unlimdim : (_ptr o _int))
-        -> (result : _int)
-        -> (and (check result 'nc_inq)
-                (values ndims nvars natts unlimdim))))
+        -> (_status 'nc_inq)
+        -> (values ndims nvars natts unlimdim)))
 
 ;; Returns the number of Dataset global attributes.
 (define-netcdf nc_inq_natts
   (_fun (netcdf-id : _int)
         (natts : (_ptr o _int))
-        -> (result : _int)
-        -> (and (check result 'nc_inq_natts) natts)))
+        -> (_status 'nc_inq_natts)
+        -> natts))
 
 ;; Returns the data type and length of a Dataset or Variable attribute.
 (define-netcdf nc_inq_att
@@ -224,9 +222,8 @@
         (name : _string)
         (dtype : (_ptr o _data-type))
         (len : (_ptr o _size))
-        -> (result : _int)
-        -> (and (check result 'nc_inq_att)
-                (values dtype len))))
+        -> (_status 'nc_inq_att)
+        -> (values dtype len)))
 
 ;; Returns the length of a Dataset or Variable attribute.
 (define-netcdf nc_inq_attlen
@@ -235,8 +232,8 @@
         (var-id : _variable-or-global = dvar)
         (name : _string)
         (len : (_ptr o _size))
-        -> (result : _int)
-        -> (and (check result 'nc_inq_attlen) len)))
+        -> (_status 'nc_inq_attlen)
+        -> len))
 
 ;; Returns the Dataset or Variable attribute name corresponding to an attribute
 ;; index.
@@ -246,16 +243,15 @@
         (var-id : _variable-or-global = dvar)
         (attnum : _int)
         (attname : (_bytes o NC_MAX_NAME))
-        -> (result : _int)
-        -> (and (check result 'nc_inq_attname)
-                (cast attname _bytes _string))))
+        -> (_status 'nc_inq_attname)
+        -> (cast attname _bytes _string)))
 
 ;; Returns the number of Dimensions defined for a Dataset.
 (define-netcdf nc_inq_ndims
   (_fun (netcdf-id : _int)
         (ndims : (_ptr o _int))
-        -> (result : _int)
-        -> (and (check result 'nc_inq_ndims) ndims)))
+        -> (_status 'nc_inq_ndims)
+        -> ndims))
 
 ;; Returns the Dimension name and size.
 (define-netcdf nc_inq_dim
@@ -263,29 +259,28 @@
         (dimid : _int)
         (dimname : (_bytes o NC_MAX_NAME))
         (dimlen : (_ptr o _size))
-        -> (result : _int)
-        -> (and (check result 'nc_inq_dim)
-                (values (cast dimname _bytes _string) dimlen))))
+        -> (_status 'nc_inq_dim)
+        -> (values (cast dimname _bytes _string) dimlen)))
 
 (define-netcdf nc_inq_dimlen
   (_fun (netcdf-id : _int)
         (dimid : _int)
         (dimlen : (_ptr o _size))
-        -> (result : _int)
-        -> (and (check result 'nc_inq_dimlen) dimlen)))
+        -> (_status 'nc_inq_dimlen)
+        -> dimlen))
 
 (define-netcdf nc_inq_dimid
   (_fun (netcdf-id : _int)
         (dimname : _string)
         (dimid : (_ptr o _int))
-        -> (result : _int)
-        -> (and (check result 'nc_inq_dimid) dimid)))
+        -> (_status 'nc_inq_dimid)
+        -> dimid))
 
 (define-netcdf nc_inq_nvars
   (_fun (netcdf-id : _int)
         (nvars : (_ptr o _int))
-        -> (result : _int)
-        -> (and (check result 'nc_inq_nvars) nvars)))
+        -> (_status 'nc_inq_nvars)
+        -> nvars))
 
 (define-netcdf nc_inq_var
   (_fun (netcdf-id : _int)
@@ -295,25 +290,24 @@
         (ndims : (_ptr o _int))
         (dimlist : (_list o _int ndims))
         (natts : (_ptr o _int))
-        -> (result : _int)
-        -> (and (check result 'nc_inq_var)
-                (variable var-id netcdf-id
-                          (cast varname _bytes _string)
-                          dtype ndims dimlist natts))))
+        -> (_status 'nc_inq_var)
+        -> (variable var-id netcdf-id
+                     (cast varname _bytes _string)
+                     dtype ndims dimlist natts)))
 
 (define-netcdf nc_inq_varid
   (_fun (netcdf-id : _int)
         (varname : _string)
         (var-id : (_ptr o _int))
-        -> (result : _int)
-        -> (and (check result 'nc_inq_varid) var-id)))
+        -> (_status 'nc_inq_varid)
+        -> var-id))
 
 (define-netcdf nc_inq_varnatts
   (_fun (_int = (variable-netcdf-id var))
         (var : _variable)
         (natts : (_ptr o _int))
-        -> (result : _int)
-        -> (and (check result 'nc_inq_varnatts) natts)))
+        -> (_status 'nc_inq_varnatts)
+        -> natts))
 
 (define-netcdf nc_inq_var_deflate
   (_fun (_int = (variable-netcdf-id var))
@@ -321,9 +315,8 @@
         (shuffle? : (_ptr o _bool))
         (deflate? : (_ptr o _bool))
         (deflate-level : (_ptr o _int))
-        -> (result : _int)
-        -> (and (check result 'nc_inq_var_deflate)
-                (list shuffle? deflate? deflate-level))))
+        -> (_status 'nc_inq_var_deflate)
+        -> (list shuffle? deflate? deflate-level)))
 
 (define-netcdf nc_get_att
   (_fun (dvar name) ::
@@ -334,9 +327,8 @@
         (type : _? = (let-values ([(type size) (nc_inq_att dvar name)])
                       (data-type->type type)))
         (ptr : _pointer = (malloc size type))
-        -> (result : _int)
-        -> (and (check result 'nc_get_att)
-                (ptr-ref ptr type))))
+        -> (_status 'nc_get_att)
+        -> (ptr-ref ptr type)))
 
 (define-netcdf nc_get_att_text
   (_fun (dvar name) ::
@@ -345,9 +337,8 @@
         (name : _string)
         (size : _? = (nc_inq_attlen dvar name))
         (value : (_bytes o size))
-        -> (result : _int)
-        -> (and (check result 'nc_get_att_text)
-                (cast value _bytes _string))))
+        -> (_status 'nc_get_att_text)
+        -> (cast value _bytes _string)))
 
 ;; Read entire var in a single call.
 (define-netcdf nc_get_var
@@ -357,8 +348,8 @@
                        (nc_inq_dimlen netcdf-id dimid)))
         (type : _? = (data-type->type (variable-dtype var)))
         (vec : (_cvector o type size))
-        -> (result : _int)
-        -> (and (check result 'nc_get_var) vec)))
+        -> (_status 'nc_get_var)
+        -> vec))
 
 ;; Read into an array, no data type conversion is done.
 (define-netcdf nc_get_vara
@@ -369,8 +360,8 @@
         (size : _? = (apply * counts))
         (type : _? = (data-type->type (variable-dtype var)))
         (vec : (_cvector o type size))
-        -> (result : _int)
-        -> (and (check result 'nc_get_vara) vec)))
+        -> (_status 'nc_get_vara)
+        -> vec))
 
 (define-netcdf nc_put_att
   (_fun (dvar name value) ::
@@ -383,8 +374,7 @@
                            [ptr (malloc size ctype)])
                       (ptr-set! ptr ctype value)
                       ptr))
-        -> (result : _int)
-        -> (check result 'nc_put_att)))
+        -> (_status 'nc_put_att)))
 
 (define-netcdf nc_put_att_text
   (_fun (dvar name value) ::
@@ -393,16 +383,14 @@
         (name : _string)
         (_size = (string-length value))
         (value : _string)
-        -> (result : _int)
-        -> (check result 'nc_put_att_text)))
+        -> (_status 'nc_put_att_text)))
 
 ;; Writes the entire var with a single call.
 (define-netcdf nc_put_var
   (_fun (_int = (variable-netcdf-id var))
         (var : _variable)
         (arr : (_cvector i))
-        -> (result : _int)
-        -> (check result 'nc_put_var)))
+        -> (_status 'nc_put_var)))
 
 (define-netcdf nc_put_vara
   (_fun (_int = (variable-netcdf-id var))
@@ -410,5 +398,4 @@
         (start : (_list i _size))
         (counts : (_list i _size))
         (arr : (_cvector i))
-        -> (result : _int)
-        -> (check result 'nc_put_vara)))
+        -> (_status 'nc_put_vara)))
