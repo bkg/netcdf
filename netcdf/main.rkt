@@ -118,10 +118,10 @@
            (variables netcdf-id)
            #f))
 
-(define (create-dataset path [mode 'clobber])
+(define (create-dataset path [mode '(no-clobber netcdf4)])
   (make-dataset (nc_create path mode) path))
 
-(define (open-dataset path #:mode [mode 'read])
+(define (open-dataset path [mode 'read])
   (make-dataset (nc_open path mode) path))
 
 (define (string-nul-terminate str)
@@ -137,8 +137,9 @@
     (check-equal? (cvector->list a) (cvector->list b)))
 
   (test-case
-    "Create NetCDF"
-    (define nc (nc_create "test.nc" '(clobber diskless netcdf4)))
+    "Create NetCDF dataset, variables, and dimensions"
+    (define dset (create-dataset "mem.nc" '(diskless netcdf4)))
+    (define nc (dataset-id dset))
     (define nx 12)
     (define ny 6)
     (define dims (create-dimensions*! nc
