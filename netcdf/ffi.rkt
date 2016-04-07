@@ -351,6 +351,13 @@
         -> (_status 'nc_get_var)
         -> vec))
 
+(define-netcdf nc_get_var_double
+  (_fun (_int = (variable-netcdf-id var))
+        (var : _variable)
+        (vec : (_cvector i))
+        -> (_status 'nc_get_var_double)
+        -> vec))
+
 ;; Read into an array, no data type conversion is done.
 (define-netcdf nc_get_vara
   (_fun (_int = (variable-netcdf-id var))
@@ -361,6 +368,18 @@
         (type : _? = (data-type->type (variable-dtype var)))
         (vec : (_cvector o type size))
         -> (_status 'nc_get_vara)
+        -> vec))
+
+;; Read into an array of doubles. Useful for integrating with BLAS FFI which
+;; requires arrays of doubles.
+(define-netcdf nc_get_vara_double
+  (_fun (_int = (variable-netcdf-id var))
+        (var : _variable)
+        (start : (_list i _size))
+        (counts : (_list i _size))
+        (size : _? = (apply * counts))
+        (vec : (_cvector o _double size))
+        -> (_status 'nc_get_vara_double)
         -> vec))
 
 (define-netcdf nc_put_att
